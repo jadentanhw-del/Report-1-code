@@ -1,0 +1,53 @@
+#include <LiquidCrystal.h>
+
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+
+// Motor pins
+int IN1 = 2, IN2 = 12, IN3 = 13, IN4 = A1;
+
+bool finished = false;
+
+void setup() {
+    Serial.begin(9600);
+
+    lcd.begin(16, 2);
+    lcd.setCursor(0, 0);
+    lcd.print("Time(s):");
+
+    // Motorpins
+    int motorPins[] = {IN1, IN2, IN3, IN4};
+    for (int i = 0; i < 6; i++) pinMode(motorPins[i], OUTPUT);
+}
+
+void loop() {
+    unsigned long elapsedTime = millis() / 1000;
+
+    // Display time on LCD
+    lcd.setCursor(9, 0);
+    if (!finished) lcd.print(elapsedTime);
+
+    // Move forward if not finished
+    if (!finished) forward();
+
+    // Stop after 10 seconds
+    if (elapsedTime >= 10 && !finished) {
+        finished = true;
+        stop();
+        lcd.setCursor(9, 0);
+        lcd.print("10"); // Freeze display
+    }
+}
+
+// Motor functions
+void forward() {
+    digitalWrite(IN1, LOW);  digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH);
+}
+
+void stop() {
+    digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW);
+}
+
+
+
