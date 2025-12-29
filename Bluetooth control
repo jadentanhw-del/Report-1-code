@@ -1,0 +1,61 @@
+// Motor pins
+int IN1 = 2, IN2 = 12, IN3 = 13, IN4 = A1, ENA = 3, ENB = 11;
+
+void setup() {
+  Serial.begin(9600);
+
+  int motorPins[] = {IN1, IN2, IN3, IN4, ENA, ENB};
+  for (int i = 0; i < 6; i++) pinMode(motorPins[i], OUTPUT);
+
+  Serial.println("Bluetooth Ready");
+}
+
+void loop() {
+  if (Serial.available()) {
+    char bt = Serial.read();
+
+    // Print to Serial Monitor
+    Serial.print("Received: ");
+    Serial.println(bt);
+
+    // Motor logic
+    if (bt == 'F') forward(255, 255);
+    if (bt == 'H') forward(255, 0);
+    if (bt == 'G') forward(0, 255);
+
+    if (bt == 'B') reverse(255, 200);
+    if (bt == 'J') reverse(255, 0);
+    if (bt == 'I') reverse(0, 255);
+
+    if (bt == 'L') left(255, 255);
+    if (bt == 'R') right(255, 255);
+
+    if (bt == 'S') stop();
+  }
+}
+
+// Motor functions
+void forward(int leftSpeed, int rightSpeed) {
+  digitalWrite(IN1, HIGH);  digitalWrite(IN2, LOW);   analogWrite(ENA, rightSpeed);
+  digitalWrite(IN3, HIGH);  digitalWrite(IN4, LOW);   analogWrite(ENB, leftSpeed);
+}
+
+void reverse(int leftSpeed, int rightSpeed) {
+  digitalWrite(IN1, LOW);   digitalWrite(IN2, HIGH);  analogWrite(ENA, rightSpeed);
+  digitalWrite(IN3, LOW);   digitalWrite(IN4, HIGH);  analogWrite(ENB, leftSpeed);
+}
+
+void left(int leftSpeed, int rightSpeed) {
+  digitalWrite(IN1, LOW);   digitalWrite(IN2, HIGH);  analogWrite(ENA, rightSpeed);
+  digitalWrite(IN3, HIGH);  digitalWrite(IN4, LOW);   analogWrite(ENB, leftSpeed);
+}
+
+void right(int leftSpeed, int rightSpeed) {
+  digitalWrite(IN1, HIGH);  digitalWrite(IN2, LOW);   analogWrite(ENA, rightSpeed);
+  digitalWrite(IN3, LOW);   digitalWrite(IN4, HIGH);  analogWrite(ENB, leftSpeed);
+}
+
+void stop() {
+  digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW);
+}
