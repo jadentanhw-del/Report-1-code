@@ -1,0 +1,115 @@
+#include <Wire.h>
+#include <MPU6050_light.h>
+#include <LiquidCrystal.h>
+
+// Motor pins
+int IN1 = 2, IN2 = 12, IN3 = 13, IN4 = A1, ENA = 3, ENB = 11;
+
+LiquidCrystal lcd(8,9,4,5,6,7);
+MPU6050 mpu(Wire);
+
+// Ramp logic
+const int RAMP_THRESHOLD = 10, FLAT_THRESHOLD = 5;
+const long SPIN_TIME = 3000;
+
+// State of robot
+enum State { ASCEND, TOP, SPIN, DESCEND, FINISH };
+State currentState = ASCEND;
+
+float maxAngle = 0;
+unsigned long lastChangeStateTime = 0;
+
+void setup() {
+  Serial.begin(9600);
+
+  // Motorpins
+  int motorPins[] = {IN1, IN2, IN3, IN4, ENA, ENB};
+  for (int i = 0; i < 6; i++) pinMode(motorPins[i], OUTPUT);
+
+  lcd.begin(16, 2);
+  lcd.setCursor(0,0); lcd.print("Calibrating");
+
+  Wire.begin();
+  if (mpu.begin() != 0) {
+    lcd.clear(); lcd.print("ERROR");
+    while(true);
+
+
+  }
+
+  delay(1000);
+  mpu.calcOffsets();
+  lcd.clear();
+  delay(300);
+}
+
+void loop() {
+  mpu.update();
+  float currentAngle = -mpu.getAngleY(); // Because MPU installed upside-down
+
+  lcd.setCursor(0,0); 
+  lcd.print("Angle:      ");
+  lcd.setCursor(6,0);
+  lcd.print(currentAngle,1); 
+  lcd.write(223);
+
+  lcd.setCursor(0,1);
+  lcd.print("                "); // Clear display value
+
+  // Ramp logic
+  if (currentState == ASCEND) {
+    forward(250,250);
+    if (currentAngle < FLAT_THRESHOLD && maxAngle > RAMP_THRESHOLD) {
+      delay(200);
+      stop(); currentState = TOP; lastChangeStateTime = millis();
+    }
+    if (currentAngle > maxAngle) maxAngle = currentAngle;
+  }
+  else if (currentState == TOP) {
+    stop();
+    if (millis() - lastChangeStateTime > 4000) {
+      currentState = SPIN; lastChangeStateTime = millis();
+    }
+  }
+  else if (currentState == SPIN) {
+    rotate(110,110);
+    if (millis() - lastChangeStateTime > SPIN_TIME) {
+      stop(); delay(500); currentState = DESCEND;
+    }
+  }
+  else if (currentState == DESCEND) {
+    forward(110,110);
+    static bool started = false;
+    if (currentAngle < -RAMP_THRESHOLD) started = true;
+    if (started && currentAngle > -FLAT_THRESHOLD) {
+      stop(); currentState = FINISH;
+    }
+  }
+  else if (currentState == FINISH) {
+    lcd.clear();
+    lcd.setCursor(0,0); lcd.print("Finished!");
+    lcd.setCursor(0,1); lcd.print("RampAngle:      "); 
+    lcd.setCursor(10,1); lcd.print(maxAngle,1); lcd.write(223);
+    stop(); 
+    while(true);
+  }
+}
+
+// Motor functions
+void forward(int leftSpeed, int rightSpeed) {
+  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH); analogWrite(ENA, rightSpeed);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH); analogWrite(ENB, leftSpeed);
+}
+
+void stop() {
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+}
+
+void rotate(int leftSpeed, int rightSpeed) {
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW); analogWrite(ENA, rightSpeed);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH); analogWrite(ENB, leftSpeed);
+}
+
+
+
