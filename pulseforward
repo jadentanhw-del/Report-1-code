@@ -1,0 +1,127 @@
+#include <LiquidCrystal.h>
+
+// LCD pins
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+
+// Wheel speed constant
+double speed = 0.0142857142857;
+
+// Motor pins
+int IN1 = 2, IN2 = 12, IN3 = 13, IN4 = A1, ENA = 3, ENB = 11;
+
+// IR line sensors
+int leftDigital = A2, rightDigital = A3;
+
+// Encoders
+int leftEncoder = A4, rightEncoder = A5;
+
+// Forward pulsing
+unsigned long lastPulseTime = 0;
+bool motorState = true;
+const unsigned long pulseInterval = 25;
+
+float distancePerPulse;
+
+void setup() {
+    Serial.begin(9600);
+    lcd.begin(16, 2);
+    lcd.print("Time(s): ");
+
+    // Arrays for initialization
+    int motorPins[] = {IN1, IN2, IN3, IN4, ENA, ENB};
+    int irPins[] = {leftDigital, rightDigital};
+    int encoderPins[] = {leftEncoder, rightEncoder};
+
+    // Motor pins
+    for (int i = 0; i < 6; i++) pinMode(motorPins[i], OUTPUT);
+
+    // IR pins
+    for (int i = 0; i < 2; i++) pinMode(irPins[i], INPUT);
+
+    // Encoder pins
+    for (int i = 0; i < 2; i++) pinMode(encoderPins[i], INPUT);
+}
+
+void loop() {
+    unsigned long currentTime = millis();
+
+    lcd.setCursor(9, 0);
+    lcd.print(currentTime / 1000);
+
+    int distance = (currentTime * speed) / 1000;
+    lcd.setCursor(0, 1);
+    lcd.print("Dist(cm): ");
+    lcd.setCursor(10, 1);
+    lcd.print(distance);
+
+    // Read digital sensors
+    int leftDigitalValue = digitalRead(leftDigital);
+    int rightDigitalValue = digitalRead(rightDigital);
+    
+    int leftEncoderValue = digitalRead(leftEncoder);
+    int rightEncoderValue = digitalRead(rightEncoder);
+
+
+
+    // Line following logic
+    if (leftDigitalValue == 1 && rightDigitalValue == 0) {
+        turnRight();
+    } else if (leftDigitalValue == 0 && rightDigitalValue == 1) {
+        turnLeft();
+    } else if (leftDigitalValue == 1 && rightDigitalValue == 1) {
+        moveForward(); // pulsed low speed
+    } else if (leftDigitalValue == 0 && rightDigitalValue == 0) {
+        stop();
+    }
+}
+
+// Motor functions
+void moveForward() {
+    unsigned long now = millis();
+
+    // Forward pulsing control
+    if (now - lastPulseTime >= pulseInterval) {
+        lastPulseTime = now;
+        motorState = !motorState;
+    }
+
+    if (motorState) {
+        analogWrite(ENA, 180); // minimum PWM
+        analogWrite(ENB, 180);
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, HIGH);
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, HIGH);
+    } else {
+        analogWrite(ENA, 0);
+        analogWrite(ENB, 0);
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, LOW);
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, LOW);
+    }
+}
+
+void turnLeft() {
+    analogWrite(ENA, 180);
+    analogWrite(ENB, 180);
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+}
+
+void turnRight() {
+    analogWrite(ENA, 180);
+    analogWrite(ENB, 180);
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+}
+
+void stop() {
+    analogWrite(ENA, 0);
+    analogWrite(ENB, 0);
+}
+
